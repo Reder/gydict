@@ -1,0 +1,67 @@
+#!/usr/bin/env groovy
+/*
+ * Yahoo Dictionary in Groovy.
+ * webpage: http://code.google.com/p/gydict/
+ *
+ *  Copyright 2010 Reder Tseng
+ *
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+@Grab(group='nekohtml', module='nekohtml', version='1.9.6')
+
+black 	= "\33[30m"
+lblack 	= "\33[1;30m"
+red 	= "\33[31m"
+green 	= "\33[32m"
+yellow 	= "\33[33m"
+blue 	= "\33[34m"
+magenta = "\33[35m"
+cyan 	= "\33[36m"
+white 	= "\33[37m"
+end 	= "\33[0m"
+
+def word = args[0]
+if (word == null || word.trim() == '') {
+	println '請輸入單字。'
+	return
+}
+
+url = "http://tw.dictionary.yahoo.com/dictionary?p=$word"
+parser = new org.cyberneko.html.parsers.SAXParser()
+parser.setProperty("http://cyberneko.org/html/properties/default-encoding", "UTF-8");
+html = new XmlSlurper(parser).parse(url)
+
+if (html.'**'.find{it.@class == 'ico'}?.text() == "很抱歉，字典找不到您要的資料喔！") {
+	println "很抱歉，字典找不到您要的資料喔！"
+	return
+}
+
+println "\n${white}${word}${end}"
+//html.'**'.findAll{it.@class == 'pronunciation'}.each {println "${green}${it}${end}"}
+html.'**'.findAll{ it.@class == 'def clr nobr'}.each {
+	it.depthFirst().each {
+		if (it.@class == 'caption') println "${red}${it}$end"
+		if (it.@class == 'list') {
+			count = 1
+			it.depthFirst().each {
+				if (it.@class == 'interpret') {
+					println "  ${green}${count}. ${it}${end}"
+					count ++
+				}
+				if (it.@class == 'example') {
+					println "      $blue" + it.text().replaceAll('\n', ' ').replaceAll(word, "${white}${word}${end}${blue}") + "$end"
+				}
+			}
+		}
+	}
+}
